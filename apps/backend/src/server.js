@@ -1,0 +1,38 @@
+const express = require("express");
+
+const cors = require("cors");
+
+const orderRoutes =
+require("./routes/orderRoutes");
+
+const trackingRoutes =
+require("./routes/trackingRoutes");
+
+const userRoutes =
+require("./routes/userRoutes");
+
+const app = express();
+
+const addressRoutes =require("./routes/addressRoutes");
+
+app.use(cors());
+
+app.use(express.json());
+
+// ROUTES
+app.use( "/api/orders",orderRoutes );
+
+app.use( "/api/users",userRoutes);
+
+app.use("/api/tracking", trackingRoutes );
+
+app.use( "/api/address", addressRoutes );
+
+const PORT = 7000;
+
+app.listen(PORT, () => {
+
+    console.log(
+        `Custom API running on port ${PORT}`
+    );
+});

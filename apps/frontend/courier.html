@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courier Dashboard - Ayur Leaf</title>
+    <link rel="stylesheet" href="courier.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Courier Header -->
+    <header class="courier-header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="logo.jpg" alt="Ayur Leaf" class="logo">
+                <div class="brand-info">
+                    <span class="brand-name">AYUR LEAF</span>
+                    <span class="courier-title">Courier Dashboard</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="search-bar">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search shipments, tracking IDs...">
+                    <button class="clear-search-btn" id="clearSearch" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="courier-profile">
+                    <div class="profile-info">
+                        <i class="fas fa-truck"></i>
+                        <span id="courierName">Delhivery Courier</span>
+                    </div>
+                    <button class="logout-btn" onclick="handleLogout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="courier-main">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <h1 class="hero-title">Delivery Operations Dashboard</h1>
+                    <p class="hero-subtitle">Manage your shipments and track deliveries efficiently</p>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-number" id="activeShipmentsCount">0</span>
+                            <span class="hero-stat-label">Active Shipments</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number" id="todayDeliveriesCount">0</span>
+                            <span class="hero-stat-label">Today's Deliveries</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number" id="completionRate">0%</span>
+                            <span class="hero-stat-label">Completion Rate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <div class="quick-actions">
+                        <h3>Quick Actions</h3>
+                        <div class="action-buttons">
+                            <button class="quick-action-btn" onclick="generateAllTrackingIds()">
+                                <i class="fas fa-tags"></i>
+                                Generate All IDs
+                            </button>
+                            <button class="quick-action-btn" onclick="markAllShipped()">
+                                <i class="fas fa-shipping-fast"></i>
+                                Mark All Shipped
+                            </button>
+                            <button class="quick-action-btn" onclick="refreshDashboard()">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Summary Cards -->
+        <section class="summary-section">
+            <div class="summary-cards">
+                <div class="summary-card total-shipments">
+                    <div class="card-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Total Assigned</h3>
+                        <p class="card-value" id="totalShipmentsCount">0</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card in-transit">
+                    <div class="card-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">In Transit</h3>
+                        <p class="card-value" id="inTransitCount">0</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card out-for-delivery">
+                    <div class="card-icon">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Out for Delivery</h3>
+                        <p class="card-value" id="outForDeliveryCount">0</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card delivered">
+                    <div class="card-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Delivered</h3>
+                        <p class="card-value" id="deliveredCount">0</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card pending">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Pending</h3>
+                        <p class="card-value" id="pendingCount">0</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label for="statusFilter">Filter by Status:</label>
+                    <select id="statusFilter" onchange="filterShipments()">
+                        <option value="">All Shipments</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button class="refresh-btn" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Shipments Section -->
+        <section class="shipments-section">
+            <div class="shipments-header">
+                <h2>Assigned Shipments</h2>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="cards" onclick="toggleView('cards')">
+                        <i class="fas fa-th-large"></i>
+                        Cards
+                    </button>
+                    <button class="view-btn" data-view="table" onclick="toggleView('table')">
+                        <i class="fas fa-table"></i>
+                        Table
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cards View -->
+            <div id="cardsView" class="cards-view">
+                <div class="shipments-cards" id="shipmentsCards">
+                    <!-- Shipment cards will be dynamically rendered here -->
+                </div>
+            </div>
+            
+            <!-- Table View -->
+            <div id="tableView" class="table-view" style="display: none;">
+                <div class="table-container">
+                    <table class="shipments-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Email</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Tracking ID</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipmentsTableBody">
+                            <!-- Shipments will be dynamically rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h2 class="empty-title">No shipments assigned</h2>
+                <p class="empty-message">You don't have any shipments assigned to you yet.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Shipment Details Modal -->
+    <div id="shipmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Shipment Details</h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Shipment details will be dynamically rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery Details Modal -->
+    <div id="deliveryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Delivery Details</h2>
+                <button class="close-btn" onclick="closeDeliveryModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="deliveryForm" onsubmit="saveDeliveryDetails(event)">
+                    <div class="form-group">
+                        <label for="deliveryDate">Delivery Date:</label>
+                        <input type="date" id="deliveryDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryTime">Delivery Time:</label>
+                        <input type="time" id="deliveryTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryLocation">Current Location/Note:</label>
+                        <textarea id="deliveryLocation" rows="3" placeholder="Enter current location or delivery note..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="cancel-btn" onclick="closeDeliveryModal()">Cancel</button>
+                        <button type="submit" class="save-btn">Save Details</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="authGuard.js"></script>
+<script src="courier.js"></script>
+</body>
+</html>

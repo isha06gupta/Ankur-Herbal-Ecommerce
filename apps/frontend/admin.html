@@ -69,6 +69,53 @@
                         <p class="card-value" id="pendingOrdersCount">0</p>
                     </div>
                 </div>
+                <div class="summary-card">
+
+    <div class="summary-icon">
+        <i class="fas fa-users"></i>
+    </div>
+
+    <div class="summary-content">
+
+        <h3 id="totalCustomersCount">0</h3>
+
+        <p>Total Customers</p>
+
+    </div>
+
+</div>
+
+<div class="summary-card">
+
+    <div class="summary-icon">
+        <i class="fas fa-chart-line"></i>
+    </div>
+
+    <div class="summary-content">
+
+        <h3 id="averageOrderValue">₹0</h3>
+
+        <p>Average Order Value</p>
+
+    </div>
+
+</div>
+
+<div class="summary-card">
+
+    <div class="summary-icon">
+        <i class="fas fa-box"></i>
+    </div>
+
+    <div class="summary-content">
+
+        <h3 id="productsSoldCount">0</h3>
+
+        <p>Products Sold</p>
+
+    </div>
+
+</div>
                 
                 <div class="summary-card shipped-orders">
                     <div class="card-icon">
@@ -100,33 +147,177 @@
                     </div>
                 </div>
             </div>
+            <div
+    class="summary-card add-courier-card"
+    onclick="openCourierModal()"
+>
+
+    <div class="card-icon">
+        <i class="fas fa-user-plus"></i>
+    </div>
+
+    <div class="card-content">
+
+        <h3 class="card-title">
+            Courier Management
+        </h3>
+
+        <p class="card-value add-courier-text">
+            Add Courier
+        </p>
+
+    </div>
+
+</div>
+            <div class="recent-activity-section">
+
+    <div class="section-header">
+        <h2>Recent Activity</h2>
+    </div>
+
+    <div
+        class="recent-activity-list"
+        id="recentActivityList"
+    >
+
+    </div>
+
+</div>
         </section>
 
         <!-- Filters Section -->
-        <section class="filters-section">
-            <div class="filters-container">
-                <div class="filter-group">
-                    <label for="statusFilter">Filter by Status:</label>
-                    <select id="statusFilter" onchange="filterOrders()">
-                        <option value="">All Orders</option>
-                        <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="packed">Packed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="out_for_delivery">Out for Delivery</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <button class="refresh-btn" onclick="refreshDashboard()">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh
-                    </button>
-                </div>
-            </div>
-        </section>
+<section class="filters-section">
 
+    <div class="filters-container">
+
+        <div class="filter-group">
+
+            <label for="statusFilter">
+                Filter by Status:
+            </label>
+
+            <select
+                id="statusFilter"
+                onchange="filterOrders()"
+            >
+                <option value="">
+                    All Orders
+                </option>
+
+                <option value="pending">
+                    Pending
+                </option>
+
+                <option value="processing">
+                    Processing
+                </option>
+
+                <option value="packed">
+                    Packed
+                </option>
+
+                <option value="shipped">
+                    Shipped
+                </option>
+
+                <option value="out_for_delivery">
+                    Out for Delivery
+                </option>
+
+                <option value="delivered">
+                    Delivered
+                </option>
+
+                <option value="cancelled">
+                    Cancelled
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="filter-group">
+
+            <input
+                type="text"
+                id="shipmentSearchInput"
+                placeholder="Search Shipment ID..."
+                class="search-input"
+            />
+
+        </div>
+
+        <div class="filter-group">
+
+            <select id="courierFilter">
+
+                <option value="">
+                    All Couriers
+                </option>
+
+                <option value="Delhivery">
+                    Delhivery
+                </option>
+
+                <option value="BlueDart">
+                    BlueDart
+                </option>
+
+                <option value="DTDC">
+                    DTDC
+                </option>
+
+                <option value="Ekart">
+                    Ekart
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="filter-group">
+
+            <select id="sortOrders">
+
+                <option value="latest">
+                    Latest Orders
+                </option>
+
+                <option value="oldest">
+                    Oldest Orders
+                </option>
+
+                <option value="high">
+                    Highest Amount
+                </option>
+
+                <option value="low">
+                    Lowest Amount
+                </option>
+
+            </select>
+
+        </div>
+        
+
+        <div class="filter-group">
+
+            <button
+                class="refresh-btn"
+                onclick="refreshDashboard()"
+            >
+
+                <i class="fas fa-sync-alt"></i>
+
+                Refresh
+
+            </button>
+
+        </div>
+    </div>
+</section>
+
+</section>
         <!-- Orders Table Section -->
         <section class="orders-section">
             <div class="orders-header">
@@ -153,6 +344,8 @@
                                 <th>Customer</th>
                                 <th>Email</th>
                                 <th>Date</th>
+                                <th>Email</th>
+                                <th>Products</th>
                                 <th>Amount</th>
                                 <th>Payment</th>
                                 <th>Status</th>
@@ -200,7 +393,119 @@
             </div>
         </div>
     </div>
+    <!-- Courier Modal -->
 
+<div
+    id="courierModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <h2>
+                Add Courier
+            </h2>
+
+            <button
+                class="close-btn"
+                onclick="closeCourierModal()"
+            >
+                <i class="fas fa-times"></i>
+            </button>
+
+        </div>
+
+        <div class="modal-body">
+
+            <form
+                id="courierForm"
+                onsubmit="createCourier(event)"
+            >
+
+                <div class="form-grid">
+
+                    <input
+                        type="text"
+                        id="courierFirstName"
+                        placeholder="First Name"
+                        required
+                    >
+
+                    <input
+                        type="text"
+                        id="courierLastName"
+                        placeholder="Last Name"
+                        required
+                    >
+
+                    <input
+                        type="email"
+                        id="courierEmail"
+                        placeholder="Email"
+                        required
+                    >
+                    <input
+                    type="text"
+                    id="courierPhone"
+                    placeholder="Phone Number"
+                    required
+                    >
+
+                    <input
+                        type="password"
+                        id="courierPassword"
+                        placeholder="Password"
+                        required
+                    >
+
+                    <select
+                        id="courierCompany"
+                        required
+                    >
+
+                        <option value="">
+                            Select Courier Company
+                        </option>
+
+                        <option value="Delhivery">
+                            Delhivery
+                        </option>
+
+                        <option value="BlueDart">
+                            BlueDart
+                        </option>
+
+                        <option value="DTDC">
+                            DTDC
+                        </option>
+
+                        <option value="Ekart">
+                            Ekart
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="refresh-btn"
+                    style="margin-top:20px;"
+                >
+                    Create Courier
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+<script src="authGuard.js"></script>
     <script src="admin.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

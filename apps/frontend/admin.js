@@ -1,4 +1,16 @@
-// Admin Dashboard JavaScript - Ayur Leaf
+const currentUser =
+JSON.parse(localStorage.getItem("ayurLeafUser"));
+
+console.log("Current User:", currentUser);
+
+if (
+    !currentUser ||
+    !currentUser.role ||
+    currentUser.role.toLowerCase() !== "admin"
+) {
+
+    window.location.href = "index.html";
+}
 
 // Global variables
 let allOrders = [];
@@ -7,6 +19,7 @@ let currentView = 'table';
 
 // Available couriers
 const COURIERS = ['Delhivery', 'BlueDart', 'DTDC', 'Ekart'];
+let courierUsers = [];
 
 // Order status options
 const ORDER_STATUSES = [
@@ -24,130 +37,118 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
 });
 
-function initializeDashboard() {
-    loadOrders();
+async function initializeDashboard() {
+
     setupEventListeners();
-    renderDashboard();
+
+    await loadCouriers();
+
+    loadOrders();
+}
+async function loadCouriers() {
+
+    try {
+
+        const response =
+        await fetch(
+            "http://localhost:7000/api/users/couriers"
+        );
+
+        const data =
+        await response.json();
+
+        if (data.success) {
+
+            courierUsers =
+            data.couriers;
+
+            console.log(
+                "Loaded Couriers:",
+                courierUsers
+            );
+        }
+
+    } catch(error) {
+
+        console.error(
+            "Courier Load Error:",
+            error
+        );
+    }
 }
 
 // Load orders from localStorage
-function loadOrders() {
+// Load orders from backend API
+async function loadOrders() {
+
     try {
-        const ordersData = localStorage.getItem('orders');
-        if (ordersData) {
-            allOrders = JSON.parse(ordersData);
-            // Ensure all orders have required fields and normalize data
-            allOrders = allOrders.map(order => {
-                // Support both old and new total field names
-                const totalAmount = order.grandTotal || order.total || order.totalAmount || 0;
-                
-                // Support both customer object and flat structure
-                const customerName = order.customer?.name || order.customerName || order.name || 'N/A';
-                const customerEmail = order.customer?.email || order.email || 'N/A';
-                const customerPhone = order.customer?.phone || order.phone || 'N/A';
-                const customerAddress = order.customer?.address || order.address || 'N/A';
-                
-                // Use created_at or orderDate, fallback to current date
-                const orderDate = order.created_at || order.orderDate || new Date().toISOString();
-                
+
+        const response = await fetch("http://localhost:7000/api/orders");
+
+        const data = await response.json();
+
+        console.log("Fetched Orders:", data);
+
+        if (data.success) {
+
+            allOrders = data.orders.map(order => {
+
                 return {
+
                     ...order,
-                    // Normalize fields
-                    totalAmount: totalAmount,
-                    orderStatus: order.orderStatus || order.status || 'pending',
-                    courierName: order.courierName || order.courier || '',
-                    shipmentId: order.shipmentId || order.trackingId || '',
-                    paymentStatus: order.paymentStatus || 'paid',
-                    // Ensure customer object exists
-                    customer: {
-                        name: customerName,
-                        email: customerEmail,
-                        phone: customerPhone,
-                        address: customerAddress
-                    },
-                    // Ensure date field exists
-                    orderDate: orderDate,
-                    // Keep original fields for compatibility
-                    orderId: order.orderId || order.id || `ORD-${Date.now()}`
+
+                    // NORMALIZED FIELDS
+                    orderId: order.order_id,
+
+                    totalAmount: Number(order.total_amount || 0),
+
+                    orderStatus: order.order_status || 'pending',
+
+                    courierName: order.courier_name || '',
+
+                    assigned_courier_email: order.assigned_courier_email || '',
+                    
+                    assigned_courier_id: order.assigned_courier_id || '',
+
+                    shipmentId: order.shipment_id || '',
+
+                    paymentStatus: order.payment_status || 'pending',
+
+                    orderDate: order.created_at,
+customer: {
+    name: order.first_name || 'Customer',
+    email: order.email || 'N/A',
+    phone: order.phone || 'N/A',
+    address: order.address || 'N/A'
+},
+
+                    // CONVERT ITEMS
+                    products: (order.items || []).map(item => ({
+                        name: item.product_title,
+                        quantity: item.quantity,
+                        price: Number(item.price || 0),
+                        image: item.image_url
+                    }))
                 };
             });
+
         } else {
-            // Create sample orders for testing if no orders exist
-            createSampleOrders();
+
+            allOrders = [];
         }
+
         filteredOrders = [...allOrders];
+
+        renderDashboard();
+
     } catch (error) {
-        console.error('Error loading orders:', error);
+
+        console.error("Error loading orders:", error);
+
         allOrders = [];
         filteredOrders = [];
     }
 }
-
-// Create sample orders for testing
-function createSampleOrders() {
-    const sampleOrders = [
-        {
-            orderId: 'ORD-001',
-            created_at: new Date('2024-05-10T15:45:00').toISOString(),
-            grandTotal: 299.99,
-            paymentStatus: 'paid',
-            orderStatus: 'delivered',
-            courierName: 'Delhivery',
-            shipmentId: 'SHP-123456',
-            customer: {
-                name: 'John Doe',
-                email: 'john@example.com',
-                phone: '+1234567890',
-                address: '123 Main St, City, State 12345'
-            },
-            products: [
-                { name: 'Ayurvedic Shampoo', quantity: 2, price: 49.99 },
-                { name: 'Herbal Soap', quantity: 4, price: 29.99 }
-            ]
-        },
-        {
-            orderId: 'ORD-002',
-            created_at: new Date('2024-05-11T10:30:00').toISOString(),
-            total: 199.99,
-            paymentStatus: 'paid',
-            orderStatus: 'shipped',
-            courierName: 'BlueDart',
-            shipmentId: 'SHP-789012',
-            customer: {
-                name: 'Jane Smith',
-                email: 'jane@example.com',
-                phone: '+0987654321',
-                address: '456 Oak Ave, Town, State 67890'
-            },
-            products: [
-                { name: 'Neem Face Pack', quantity: 1, price: 99.99 },
-                { name: 'Aloe Vera Gel', quantity: 2, price: 49.99 }
-            ]
-        },
-        {
-            orderId: 'ORD-003',
-            created_at: new Date('2024-05-12T09:15:00').toISOString(),
-            totalAmount: 149.99,
-            paymentStatus: 'pending',
-            orderStatus: 'processing',
-            courierName: '',
-            shipmentId: '',
-            customer: {
-                name: 'Bob Johnson',
-                email: 'bob@example.com',
-                phone: '+1122334455',
-                address: '789 Pine Rd, Village, State 13579'
-            },
-            products: [
-                { name: 'Turmeric Capsules', quantity: 3, price: 49.99 }
-            ]
-        }
-    ];
-    
-    allOrders = sampleOrders;
-    localStorage.setItem('orders', JSON.stringify(allOrders));
-}
-
 // Setup event listeners
 function setupEventListeners() {
     // Global search
@@ -177,12 +178,52 @@ function setupEventListeners() {
             }
         });
     }
+    const shipmentSearchInput =
+    document.getElementById(
+        'shipmentSearchInput'
+    );
+
+if (shipmentSearchInput) {
+
+    shipmentSearchInput.addEventListener(
+        'input',
+        filterOrders
+    );
 }
+
+const courierFilter =
+    document.getElementById(
+        'courierFilter'
+    );
+
+if (courierFilter) {
+
+    courierFilter.addEventListener(
+        'change',
+        filterOrders
+    );
+}
+
+const sortOrders =
+    document.getElementById(
+        'sortOrders'
+    );
+
+if (sortOrders) {
+
+    sortOrders.addEventListener(
+        'change',
+        filterOrders
+    );
+}
+}
+
 
 // Render entire dashboard
 function renderDashboard() {
     updateSummaryCards();
     renderOrders();
+    renderRecentActivity();
 }
 
 // Update summary cards
@@ -194,13 +235,49 @@ function updateSummaryCards() {
     const totalRevenue = allOrders
         .filter(order => order.paymentStatus === 'paid')
         .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-    
+    const uniqueCustomers = new Set(
+    allOrders.map(order =>
+        order.customer?.email
+    )
+).size;
+
+const averageOrderValue =
+    totalOrders > 0
+        ? totalRevenue / totalOrders
+        : 0;
+
+const totalProductsSold =
+    allOrders.reduce((sum, order) => {
+
+        const qty =
+            (order.products || []).reduce(
+                (pSum, p) => pSum + p.quantity,
+                0
+            );
+
+        return sum + qty;
+
+    }, 0);
     // Update DOM
     updateElement('totalOrdersCount', totalOrders);
     updateElement('pendingOrdersCount', pendingOrders);
     updateElement('shippedOrdersCount', shippedOrders);
     updateElement('deliveredOrdersCount', deliveredOrders);
     updateElement('totalRevenueAmount', `₹${totalRevenue.toFixed(2)}`);
+    updateElement(
+    'totalCustomersCount',
+    uniqueCustomers
+);
+
+updateElement(
+    'averageOrderValue',
+    `₹${averageOrderValue.toFixed(2)}`
+);
+
+updateElement(
+    'productsSoldCount',
+    totalProductsSold
+);
 }
 
 // Helper function to update element content
@@ -221,6 +298,60 @@ function renderOrders() {
     
     // Show/hide empty state
     toggleEmptyState();
+}
+function renderRecentActivity() {
+
+    const container =
+        document.getElementById(
+            'recentActivityList'
+        );
+
+    if (!container) return;
+
+    const latestOrders =
+        [...allOrders]
+        .sort(
+            (a, b) =>
+                new Date(b.orderDate) -
+                new Date(a.orderDate)
+        )
+        .slice(0, 6);
+
+    container.innerHTML =
+        latestOrders.map(order => `
+
+            <div class="activity-item">
+
+                <div class="activity-dot"></div>
+
+                <div class="activity-content">
+
+                    <div class="activity-title">
+
+                        Order
+                        <strong>
+                            ${order.orderId}
+                        </strong>
+
+                        is currently
+
+                        <strong>
+                            ${formatStatus(order.orderStatus)}
+                        </strong>
+
+                    </div>
+
+                    <div class="activity-time">
+
+                        ${formatOrderDate(order.orderDate)}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `).join('');
 }
 
 // Render table view
@@ -244,7 +375,6 @@ function renderTableView() {
 // Create table row for order
 function createOrderTableRow(order) {
     const row = document.createElement('tr');
-    
     const customerName = order.customer?.name || order.customerName || 'N/A';
     const customerEmail = order.customer?.email || order.email || 'N/A';
     const orderDate = formatOrderDate(order.orderDate || order.created_at);
@@ -254,11 +384,23 @@ function createOrderTableRow(order) {
         <td><strong>${order.orderId}</strong></td>
         <td>${customerName}</td>
         <td>${customerEmail}</td>
+        <td>
+    ${createProductsPreview(order.products)}
+</td>
         <td>${orderDate}</td>
         <td>${amount}</td>
         <td>${createPaymentBadge(order.paymentStatus)}</td>
-        <td>${createStatusDropdown(order.orderId, order.orderStatus)}</td>
-        <td>${createCourierDropdown(order.orderId, order.courierName)}</td>
+        <td>
+    ${createStatusBadge(order.orderStatus)}
+    <div class="status-actions">
+        ${createStatusActionButtons(order)}
+    </div>
+</td>
+        <td>${createCourierDropdown(
+    order.orderId,
+    order.courierName,
+    order.assigned_courier_email
+)}</td>
         <td>${order.shipmentId || '-'}</td>
         <td class="actions-cell">
             ${createActionButtons(order)}
@@ -346,84 +488,512 @@ function createPaymentBadge(status) {
     return `<span class="status-badge status-${color}">${status.toUpperCase()}</span>`;
 }
 
-// Create status dropdown
-function createStatusDropdown(orderId, currentStatus) {
-    const options = ORDER_STATUSES.map(status => 
-        `<option value="${status}" ${status === currentStatus ? 'selected' : ''}>${formatStatus(status)}</option>`
-    ).join('');
-    
-    return `<select class="status-dropdown" onchange="updateOrderStatus('${orderId}', this.value)">
-        ${options}
-    </select>`;
+
+function createStatusActionButtons(order) {
+
+    const status = order.orderStatus;
+
+    if (status === 'pending') {
+
+        return `
+            <button
+                class="mini-status-btn"
+                onclick="updateOrderStatus('${order.orderId}', 'processing')">
+                Mark Processing
+            </button>
+        `;
+    }
+
+    if (status === 'processing') {
+
+        return `
+            <button
+                class="mini-status-btn"
+                onclick="updateOrderStatus('${order.orderId}', 'packed')">
+                Mark Packed
+            </button>
+        `;
+    }
+
+    if (status === 'packed') {
+
+        return `
+            <button
+                class="mini-status-btn"
+                onclick="updateOrderStatus('${order.orderId}', 'shipped')">
+                Mark Shipped
+            </button>
+        `;
+    }
+
+    if (status === 'shipped') {
+
+        return `
+            <button
+                class="mini-status-btn"
+                onclick="updateOrderStatus('${order.orderId}', 'out_for_delivery')">
+                Out For Delivery
+            </button>
+        `;
+    }
+
+    if (status === 'out_for_delivery') {
+
+        return `
+            <button
+                class="mini-status-btn"
+                onclick="updateOrderStatus('${order.orderId}', 'delivered')">
+                Mark Delivered
+            </button>
+        `;
+    }
+
+    return `
+        <span class="completed-status">
+            Completed
+        </span>
+    `;
+}
+// Create courier dropdown
+function createCourierDropdown(
+    orderId,
+    currentCourier,
+    assignedCourierEmail
+) {
+
+    const matchingCouriers =
+    courierUsers.filter(courier => {
+
+        return (
+            courier.company_name === currentCourier
+        );
+    });
+
+    const courierOptions =
+    matchingCouriers.map(courier => {
+
+        const fullName =
+        `${courier.first_name} ${courier.last_name}`;
+
+        return `
+            <option
+                value="${courier.email}"
+                ${courier.email === assignedCourierEmail
+                    ? 'selected'
+                    : ''}
+            >
+                ${fullName}
+            </option>
+        `;
+    }).join('');
+
+    return `
+
+        <div class="courier-assignment-box">
+
+            <select
+                class="courier-dropdown"
+                onchange="
+                    updateCourierCompany(
+                        '${orderId}',
+                        this.value
+                    )
+                "
+            >
+
+                <option value="">
+                    Select Company
+                </option>
+
+                ${COURIERS.map(company => `
+
+                    <option
+                        value="${company}"
+                        ${company === currentCourier
+                            ? 'selected'
+                            : ''}
+                    >
+                        ${company}
+                    </option>
+
+                `).join('')}
+
+            </select>
+
+            <select
+                class="courier-dropdown courier-person-dropdown"
+                onchange="
+                    assignCourierPerson(
+                        '${orderId}',
+                        this.value
+                    )
+                "
+            >
+
+                <option value="">
+                    Select Courier
+                </option>
+
+                ${courierOptions}
+
+            </select>
+
+        </div>
+    `;
 }
 
-// Create courier dropdown
-function createCourierDropdown(orderId, currentCourier) {
-    const options = ['<option value="">Not assigned</option>', ...COURIERS.map(courier => 
-        `<option value="${courier}" ${courier === currentCourier ? 'selected' : ''}>${courier}</option>`
-    )].join('');
-    
-    return `<select class="courier-dropdown" onchange="updateCourier('${orderId}', this.value)">
-        ${options}
-    </select>`;
+function createProductsPreview(products = []) {
+
+    if (!products.length) {
+
+        return 'No products';
+    }
+
+    return products.map(product => {
+
+        return `
+            <div class="product-preview">
+
+                <img
+                    src="${product.image || 'https://via.placeholder.com/40'}"
+                    class="product-preview-img"
+                >
+
+                <div class="product-preview-info">
+
+                    <div class="product-preview-name">
+                        ${product.name}
+                    </div>
+
+                    <div class="product-preview-qty">
+                        Qty: ${product.quantity}
+                    </div>
+
+                </div>
+
+            </div>
+        `;
+    }).join('');
 }
 
 // Create action buttons
 function createActionButtons(order) {
-    const hasShipmentId = order.shipmentId && order.shipmentId.trim() !== '';
-    
+
+    const hasShipmentId =
+        order.shipmentId &&
+        order.shipmentId.trim() !== '';
+
     return `
-        <button class="action-btn view-btn-action" onclick="viewOrderDetails('${order.orderId}')">
-            <i class="fas fa-eye"></i> View
+
+        <button
+            class="action-btn view-btn-action"
+            onclick="viewOrderDetails('${order.orderId}')"
+        >
+
+            <i class="fas fa-eye"></i>
+
+            View
+
         </button>
+
+        <button
+            class="action-btn invoice-btn"
+            onclick="downloadInvoice('${order.orderId}')"
+        >
+
+            <i class="fas fa-file-pdf"></i>
+
+            Invoice
+
+        </button>
+
         ${!hasShipmentId ? `
-            <button class="action-btn generate-btn" onclick="generateShipmentId('${order.orderId}')">
-                <i class="fas fa-tag"></i> Generate ID
+
+            <button
+                class="action-btn generate-btn"
+                onclick="generateShipmentId('${order.orderId}')"
+            >
+
+                <i class="fas fa-tag"></i>
+
+                Generate ID
+
             </button>
+
         ` : `
-            <button class="action-btn generate-btn" disabled>
-                <i class="fas fa-check"></i> ID Generated
+
+            <button
+                class="action-btn generate-btn"
+                disabled
+            >
+
+                <i class="fas fa-check"></i>
+
+                ID Generated
+
             </button>
+
         `}
     `;
 }
-
 // Update order status
-function updateOrderStatus(orderId, newStatus) {
-    const orderIndex = allOrders.findIndex(order => order.orderId === orderId);
-    if (orderIndex !== -1) {
-        allOrders[orderIndex].orderStatus = newStatus;
-        saveOrders();
+async function updateOrderStatus(orderId, newStatus) {
+
+    try {
+
+        const order = allOrders.find(
+            order => order.orderId === orderId
+        );
+
+        if (!order) return;
+
+        // UPDATE ORDER STATUS
+        await fetch(
+            `http://localhost:7000/api/orders/${order.id}/status`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    order_status: newStatus
+                })
+            }
+        );
+
+        // TRACKING MESSAGE
+        let trackingMessage = "";
+
+        switch(newStatus) {
+
+            case "processing":
+                trackingMessage =
+                    "Your order is being processed";
+                break;
+
+            case "packed":
+                trackingMessage =
+                    "Your order has been packed";
+                break;
+
+            case "shipped":
+                trackingMessage =
+                    "Your package has been shipped";
+                break;
+
+            case "out_for_delivery":
+                trackingMessage =
+                    "Your package is out for delivery";
+                break;
+
+            case "delivered":
+                trackingMessage =
+                    "Package delivered successfully";
+                break;
+
+            case "cancelled":
+                trackingMessage =
+                    "Order has been cancelled";
+                break;
+
+            default:
+                trackingMessage =
+                    "Order status updated";
+        }
+
+        // INSERT TRACKING ENTRY
+        await fetch(
+            "http://localhost:7000/api/tracking",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+
+                    order_id: order.id,
+
+                    status: formatStatus(newStatus),
+
+                    location: "Warehouse",
+
+                    description: trackingMessage
+                })
+            }
+        );
+
+        // UPDATE UI
+        order.orderStatus = newStatus;
+
         renderDashboard();
-        showNotification(`Order status updated to ${formatStatus(newStatus)}`, 'success');
+
+        showNotification(
+            `Order updated to ${formatStatus(newStatus)}`,
+            "success"
+        );
+
+    } catch(error) {
+
+        console.error(
+            "Status Update Error:",
+            error
+        );
+
+        showNotification(
+            "Failed to update order",
+            "error"
+        );
     }
 }
 
 // Update courier
-function updateCourier(orderId, newCourier) {
-    const orderIndex = allOrders.findIndex(order => order.orderId === orderId);
-    if (orderIndex !== -1) {
-        allOrders[orderIndex].courierName = newCourier;
-        saveOrders();
-        renderDashboard();
-        showNotification(`Courier assigned successfully`, 'success');
+async function updateCourierCompany(orderId, newCourier) {
+
+    try {
+
+        const response = await fetch(
+            `http://localhost:7000/api/orders/${orderId}/courier`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+
+                    courier_name: newCourier,
+
+                    assigned_courier_email: null,
+
+                    assigned_courier_id: null
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.success) {
+
+            showNotification(
+                "Courier company updated",
+                "success"
+            );
+
+            loadOrders();
+        }
+
+    } catch(error) {
+
+        console.error(error);
     }
 }
+async function assignCourierPerson(
+    orderId,
+    courierEmail
+) {
 
+    try {
+
+        const courier =
+        courierUsers.find(
+            c => c.email === courierEmail
+        );
+
+        if (!courier) {
+
+            showNotification(
+                "Courier not found",
+                "error"
+            );
+
+            return;
+        }
+
+        const response =
+        await fetch(
+            `http://localhost:7000/api/orders/${orderId}/courier`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+
+                    courier_name:
+                        courier.company_name,
+
+                    assigned_courier_email:
+                        courier.email,
+
+                    assigned_courier_id:
+                        courier.id
+                })
+            }
+        );
+
+        const data =
+        await response.json();
+
+        if (data.success) {
+
+            showNotification(
+                "Courier assigned successfully",
+                "success"
+            );
+
+            loadOrders();
+        }
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            "Assignment failed",
+            "error"
+        );
+    }
+}
 // Generate shipment ID
-function generateShipmentId(orderId) {
-    const orderIndex = allOrders.findIndex(order => order.orderId === orderId);
-    if (orderIndex !== -1 && !allOrders[orderIndex].shipmentId) {
-        const shipmentId = `SHP-${Math.floor(100000 + Math.random() * 900000)}`;
-        allOrders[orderIndex].shipmentId = shipmentId;
-        saveOrders();
-        renderDashboard();
-        showNotification(`Shipment ID generated: ${shipmentId}`, 'success');
-    } else if (allOrders[orderIndex]?.shipmentId) {
-        showNotification('Shipment ID already exists', 'warning');
+async function generateShipmentId(orderId) {
+
+    try {
+
+        const response = await fetch(
+            `http://localhost:7000/api/orders/${orderId}/shipment`,
+            {
+                method: "PUT"
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.success) {
+
+            showNotification(
+                `Shipment ID generated: ${data.shipment_id}`,
+                "success"
+            );
+
+            loadOrders();
+
+        } else {
+
+            showNotification(
+                "Failed to generate shipment ID",
+                "error"
+            );
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        showNotification(
+            "Error generating shipment ID",
+            "error"
+        );
     }
 }
-
 // View order details
 function viewOrderDetails(orderId) {
     const order = allOrders.find(o => o.orderId === orderId);
@@ -534,7 +1104,13 @@ function createOrderDetailsHTML(order) {
                 </table>
             </div>
         </div>
-        
+        <div class="detail-section">
+
+    <h3>Order Timeline</h3>
+
+    ${createTimelineHTML(order.orderStatus)}
+
+</div>
         <style>
             .order-details {
                 max-width: 100%;
@@ -583,6 +1159,66 @@ function createOrderDetailsHTML(order) {
                 background: var(--muted-cream);
                 font-weight: 600;
             }
+                .timeline-container {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+    flex-wrap: wrap;
+}
+
+.timeline-step {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    flex: 1;
+}
+
+.timeline-circle {
+
+    width: 40px;
+
+    height: 40px;
+
+    border-radius: 50%;
+
+    background: #dcdcdc;
+
+    color: white;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-weight: bold;
+
+    margin-bottom: 8px;
+}
+
+.timeline-circle.active {
+
+    background: #556B2F;
+}
+
+.timeline-label {
+
+    font-size: 12px;
+
+    text-align: center;
+
+    color: #333;
+}
         </style>
     `;
 }
@@ -664,18 +1300,104 @@ function clearGlobalSearchInput() {
 
 // Filter orders by status
 function filterOrders() {
-    const statusFilter = document.getElementById('statusFilter');
-    const selectedStatus = statusFilter ? statusFilter.value : '';
-    
-    if (selectedStatus === '') {
-        filteredOrders = [...allOrders];
-    } else {
-        filteredOrders = allOrders.filter(order => order.orderStatus === selectedStatus);
+
+    const statusFilter =
+        document.getElementById(
+            'statusFilter'
+        );
+
+    const courierFilter =
+        document.getElementById(
+            'courierFilter'
+        );
+
+    const shipmentSearch =
+        document.getElementById(
+            'shipmentSearchInput'
+        );
+
+    const sortOrders =
+        document.getElementById(
+            'sortOrders'
+        );
+
+    const selectedStatus =
+        statusFilter?.value || '';
+
+    const selectedCourier =
+        courierFilter?.value || '';
+
+    const shipmentSearchTerm =
+        shipmentSearch?.value
+        ?.toLowerCase() || '';
+
+    const sortValue =
+        sortOrders?.value || 'latest';
+
+    filteredOrders =
+        [...allOrders].filter(order => {
+
+            const matchesStatus =
+                !selectedStatus ||
+                order.orderStatus === selectedStatus;
+
+            const matchesCourier =
+                !selectedCourier ||
+                order.courierName === selectedCourier;
+
+            const matchesShipment =
+                !shipmentSearchTerm ||
+                (order.shipmentId || '')
+                .toLowerCase()
+                .includes(shipmentSearchTerm);
+
+            return (
+                matchesStatus &&
+                matchesCourier &&
+                matchesShipment
+            );
+        });
+
+    // SORTING
+
+    if (sortValue === 'latest') {
+
+        filteredOrders.sort(
+            (a, b) =>
+                new Date(b.orderDate) -
+                new Date(a.orderDate)
+        );
     }
-    
+
+    if (sortValue === 'oldest') {
+
+        filteredOrders.sort(
+            (a, b) =>
+                new Date(a.orderDate) -
+                new Date(b.orderDate)
+        );
+    }
+
+    if (sortValue === 'high') {
+
+        filteredOrders.sort(
+            (a, b) =>
+                b.totalAmount -
+                a.totalAmount
+        );
+    }
+
+    if (sortValue === 'low') {
+
+        filteredOrders.sort(
+            (a, b) =>
+                a.totalAmount -
+                b.totalAmount
+        );
+    }
+
     renderOrders();
 }
-
 // Refresh dashboard
 function refreshDashboard() {
     loadOrders();
@@ -812,7 +1534,47 @@ function formatDate(dateString) {
 function formatStatus(status) {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
+function createTimelineHTML(currentStatus) {
 
+    const statuses = [
+        'pending',
+        'processing',
+        'packed',
+        'shipped',
+        'out_for_delivery',
+        'delivered'
+    ];
+
+    const currentIndex =
+        statuses.indexOf(currentStatus);
+
+    return `
+        <div class="timeline-container">
+
+            ${statuses.map((status, index) => `
+
+                <div class="timeline-step">
+
+                    <div class="
+                        timeline-circle
+                        ${index <= currentIndex
+                            ? 'active'
+                            : ''}
+                    ">
+                        ✓
+                    </div>
+
+                    <div class="timeline-label">
+                        ${formatStatus(status)}
+                    </div>
+
+                </div>
+
+            `).join('')}
+
+        </div>
+    `;
+}
 // Add CSS animations for notifications
 const style = document.createElement('style');
 style.textContent = `
@@ -826,3 +1588,430 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+async function downloadInvoice(orderId) {
+
+    const order =
+        allOrders.find(
+            o => o.orderId === orderId
+        );
+
+    if (!order) return;
+
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF();
+
+    // COLORS
+
+    const olive = [94, 111, 82];
+
+    // HEADER
+
+    doc.setFillColor(...olive);
+
+    doc.rect(0, 0, 210, 35, 'F');
+
+    doc.setTextColor(255, 255, 255);
+
+    doc.setFontSize(26);
+
+    doc.text(
+        'AYUR LEAF',
+        20,
+        20
+    );
+
+    doc.setFontSize(14);
+
+    doc.text(
+        'INVOICE',
+        160,
+        20
+    );
+
+    // RESET TEXT COLOR
+
+    doc.setTextColor(0, 0, 0);
+
+    let y = 50;
+
+    // ORDER INFO BOX
+
+    doc.setDrawColor(220);
+
+    doc.roundedRect(
+        15,
+        y,
+        180,
+        28,
+        3,
+        3
+    );
+
+    doc.setFontSize(12);
+
+    doc.text(
+        `Order ID: ${order.orderId}`,
+        22,
+        y + 10
+    );
+
+    doc.text(
+        `Date: ${formatOrderDate(order.orderDate)}`,
+        22,
+        y + 20
+    );
+
+    doc.text(
+        `Payment: ${order.paymentStatus}`,
+        120,
+        y + 10
+    );
+
+    doc.text(
+        `Status: ${formatStatus(order.orderStatus)}`,
+        120,
+        y + 20
+    );
+
+    y += 40;
+
+    // CUSTOMER SECTION
+
+    doc.setFontSize(16);
+
+    doc.setTextColor(...olive);
+
+    doc.text(
+        'Customer Details',
+        15,
+        y
+    );
+
+    doc.setTextColor(0,0,0);
+
+    y += 10;
+
+    doc.roundedRect(
+        15,
+        y,
+        180,
+        40,
+        3,
+        3
+    );
+
+    doc.setFontSize(11);
+
+    doc.text(
+        `Name: ${order.customer?.name || 'N/A'}`,
+        22,
+        y + 10
+    );
+
+    doc.text(
+        `Email: ${order.customer?.email || 'N/A'}`,
+        22,
+        y + 20
+    );
+
+    doc.text(
+        `Phone: ${order.customer?.phone || 'N/A'}`,
+        22,
+        y + 30
+    );
+
+    const address =
+        order.customer?.address || 'N/A';
+
+    doc.text(
+        `Address: ${address}`,
+        100,
+        y + 10,
+        { maxWidth: 80 }
+    );
+
+    y += 55;
+
+    // PRODUCTS TITLE
+
+    doc.setFontSize(16);
+
+    doc.setTextColor(...olive);
+
+    doc.text(
+        'Products',
+        15,
+        y
+    );
+
+    y += 10;
+
+    // TABLE HEADER
+
+    doc.setFillColor(...olive);
+
+    doc.rect(15, y, 180, 10, 'F');
+
+    doc.setTextColor(255,255,255);
+
+    doc.setFontSize(11);
+
+    doc.text('Product', 20, y + 7);
+
+    doc.text('Qty', 110, y + 7);
+
+    doc.text('Price', 135, y + 7);
+
+    doc.text('Total', 165, y + 7);
+
+    y += 10;
+
+    // PRODUCTS
+
+    doc.setTextColor(0,0,0);
+
+    (order.products || []).forEach(product => {
+
+        const total =
+            product.quantity * product.price;
+
+        doc.rect(15, y, 180, 10);
+
+        doc.text(
+            product.name,
+            20,
+            y + 7
+        );
+
+        doc.text(
+            String(product.quantity),
+            112,
+            y + 7
+        );
+
+        doc.text(
+            `₹${product.price}`,
+            135,
+            y + 7
+        );
+
+        doc.text(
+            `₹${total}`,
+            165,
+            y + 7
+        );
+
+        y += 10;
+    });
+
+    y += 15;
+
+    // TOTAL SECTION
+
+    doc.setFillColor(245,245,245);
+
+    doc.roundedRect(
+        120,
+        y,
+        75,
+        25,
+        3,
+        3,
+        'F'
+    );
+
+    doc.setFontSize(12);
+
+    doc.text(
+        `Grand Total`,
+        128,
+        y + 10
+    );
+
+    doc.setFontSize(18);
+
+    doc.setTextColor(...olive);
+
+    doc.text(
+        `₹${order.totalAmount.toFixed(2)}`,
+        128,
+        y + 20
+    );
+
+    doc.setTextColor(0,0,0);
+
+    y += 40;
+
+    // SHIPMENT INFO
+
+    doc.setFontSize(14);
+
+    doc.setTextColor(...olive);
+
+    doc.text(
+        'Shipment Details',
+        15,
+        y
+    );
+
+    doc.setTextColor(0,0,0);
+
+    y += 10;
+
+    doc.roundedRect(
+        15,
+        y,
+        180,
+        25,
+        3,
+        3
+    );
+
+    doc.setFontSize(11);
+
+    doc.text(
+        `Shipment ID: ${order.shipmentId || 'Not Generated'}`,
+        22,
+        y + 10
+    );
+
+    doc.text(
+        `Courier: ${order.courierName || 'Not Assigned'}`,
+        22,
+        y + 20
+    );
+
+    // FOOTER
+
+    doc.setFontSize(10);
+
+    doc.setTextColor(120);
+
+    doc.text(
+        'Thank you for shopping with Ayur Leaf',
+        60,
+        285
+    );
+
+    // SAVE
+
+    doc.save(
+        `Invoice-${order.orderId}.pdf`
+    );
+}
+// OPEN COURIER MODAL
+
+function openCourierModal() {
+
+    document.getElementById(
+        "courierModal"
+    ).style.display = "block";
+}
+
+// CLOSE COURIER MODAL
+
+function closeCourierModal() {
+
+    document.getElementById(
+        "courierModal"
+    ).style.display = "none";
+}
+
+// CREATE COURIER
+
+async function createCourier(event) {
+
+    event.preventDefault();
+
+    try {
+
+        const first_name =
+            document.getElementById(
+                "courierFirstName"
+            ).value;
+
+        const last_name =
+            document.getElementById(
+                "courierLastName"
+            ).value;
+
+       const email =
+    document.getElementById(
+        "courierEmail"
+    ).value;
+
+const phone =
+    document.getElementById(
+        "courierPhone"
+    ).value;
+
+const password =document.getElementById(
+                "courierPassword"
+            ).value;
+
+        const company_name =
+            document.getElementById(
+                "courierCompany"
+            ).value;
+
+        const response =
+            await fetch(
+                "http://localhost:7000/api/users/register",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                        "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        first_name,
+                        last_name,
+                        email,
+                        phone,
+                        password,
+                        role: "courier",
+                        company_name
+
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (data.success) {
+
+            showNotification(
+                "Courier created successfully",
+                "success"
+            );
+
+            closeCourierModal();
+
+            document.getElementById(
+                "courierForm"
+            ).reset();
+
+        } else {
+
+            showNotification(
+                data.message ||
+                "Failed to create courier",
+                "error"
+            );
+        }
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            "Server error",
+            "error"
+        );
+    }
+}

@@ -31,5 +31,8 @@
   ],
   "overrides": {
     "ajv": "^8.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
   }
 }

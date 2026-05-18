@@ -74,73 +74,116 @@ function setupProfileDropdown() {
 }
 
 // Load orders from localStorage
-function loadOrders() {
-    console.log('🔍 Loading orders from localStorage...');
-    
+async function loadOrders() {
+
+    console.log("📦 Loading orders from database...");
+
     try {
-        const ordersStr = localStorage.getItem('orders');
-        console.log('📦 Raw orders string:', ordersStr);
-        
-        if (ordersStr) {
-            allOrders = JSON.parse(ordersStr);
-            console.log('📦 Parsed orders:', allOrders);
-            console.log('📦 Total orders found:', allOrders.length);
+
+        const response = await fetch(
+            "http://localhost:7000/api/orders"
+        );
+
+        const data = await response.json();
+
+        console.log("Fetched Orders:", data);
+
+        if (data.success) {
+
+            allOrders = data.orders.map(order => {
+
+                return {
+
+                    id: order.id,
+
+                    orderId: order.order_id,
+
+                    created_at: order.created_at,
+
+                    orderStatus: order.order_status,
+
+                    total: Number(order.total_amount || 0),
+
+                    paymentStatus: order.payment_status,
+
+                    customerName: order.first_name || "Customer",
+
+                    customerEmail: order.email,
+
+                    shipmentId: order.shipment_id,
+
+                    courierName: order.courier_name,
+
+                    items: (order.items || []).map(item => ({
+
+                        id: item.product_id,
+
+                        title: item.product_title,
+
+                        quantity: item.quantity,
+
+                        price: Number(item.price || 0),
+
+                        image: item.image_url
+
+                    }))
+                };
+            });
+
         } else {
-            console.log('📦 No orders found in localStorage');
+
             allOrders = [];
         }
-    } catch (e) {
-        console.error('❌ Error loading orders:', e);
-        allOrders = [];
-    }
-    
-    // Filter orders for current user
-    filterUserOrders();
-    renderOrders();
-}
 
+        console.log("All Orders:", allOrders);
+
+        filterUserOrders();
+
+        renderOrders();
+
+    } catch (error) {
+
+        console.error("❌ Error loading orders:", error);
+
+        allOrders = [];
+
+        filteredOrders = [];
+
+        renderOrders();
+    }
+}
 // Filter orders for current user
 function filterUserOrders() {
+
     console.log('Current User:', currentUser);
+
     console.log('All Orders:', allOrders);
-    
+
     if (!currentUser) {
-        console.log('❌ No current user, filtering to empty array');
+
         filteredOrders = [];
+
         return;
     }
-    
-    console.log('🔍 Filtering orders from', allOrders.length, 'total orders');
-    
+
     filteredOrders = allOrders.filter(order => {
-        console.log('🔍 Checking order:', order);
-        
-        // Support both old flat structure and new nested customer object structure
-        const matches = 
-            // Old structure (flat properties)
-            order.userEmail === currentUser.email || 
-            order.userId === currentUser.id ||
-            order.customerEmail === currentUser.email ||
-            // New structure (nested customer object)
-            order.customer?.email === currentUser.email ||
-            order.customer?.id === currentUser.id;
-        
-        console.log('🔍 Order matches user:', matches);
-        return matches;
+
+        return (
+            order.customerEmail === currentUser.email
+        );
     });
-    
-    console.log('Filtered Orders:', filteredOrders.length);
-    
-    // Sort by date (newest first)
+
     filteredOrders.sort((a, b) => {
-        const dateA = new Date(a.created_at || a.orderDate || 0);
-        const dateB = new Date(b.created_at || b.orderDate || 0);
+
+        const dateA = new Date(a.created_at || 0);
+
+        const dateB = new Date(b.created_at || 0);
+
         return dateB - dateA;
     });
-    
-    console.log('Sorted orders (newest first):', filteredOrders);
-}
 
+    console.log("Filtered Orders:", filteredOrders);
+}
 // Render orders to the page
 function renderOrders(ordersToRender = filteredOrders) {
     if (ordersToRender.length === 0) {
@@ -164,7 +207,9 @@ function createOrderCard(order) {
     const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
     
     // Get product image (fallback to placeholder)
-    const productImage = firstItem?.image || 'https://via.placeholder.com/80x80/f0f0f0/666?text=Product';
+    const productImage =
+    firstItem?.image ||
+    'https://via.placeholder.com/80x80';
     
     // Get product title (show first item or order summary)
     const productTitle = firstItem?.title || firstItem?.name || 'Order Items';
@@ -177,7 +222,8 @@ function createOrderCard(order) {
     const customerName = order.customerName || order.shippingName || 'Customer';
     
     // Format total amount
-    const totalAmount = formatCurrency(order.total || order.amount || 0);
+    const totalAmount =
+    formatCurrency(order.total || 0);
     
     return `
         <div class="order-card">
@@ -334,21 +380,94 @@ function clearSearch() {
 }
 
 // Order action functions
-function trackPackage(orderId) {
-    // Find the order
-    const order = allOrders.find(o => (o.orderId || o.id) === orderId);
-    if (!order) return;
-    
-    // Show tracking information (placeholder for now)
-    const trackingInfo = `
-        Order #${orderId}
-        Status: ${formatStatus(order.orderStatus)}
-        
-        Tracking functionality will be available soon.
-        You will receive tracking updates via email.
-    `;
-    
-    alert(trackingInfo);
+async function trackPackage(orderId) {
+
+    try {
+
+        const order = allOrders.find(
+            o => (o.orderId || o.id) === orderId
+        );
+
+        if (!order) return;
+
+        const response = await fetch(
+            `http://localhost:7000/api/tracking/${order.id}`
+        );
+
+        const data = await response.json();
+
+        console.log("Tracking Data:", data);
+
+        if (!data.success) {
+
+            alert("Failed to load tracking");
+
+            return;
+        }
+
+        const tracking = data.tracking;
+
+        const latest = tracking[tracking.length - 1];
+
+        const trackingHTML = `
+
+            <div class="tracking-body">
+
+                <div class="tracking-top">
+
+                    <div class="tracking-status">
+                        ${latest?.tracking_status || 'Order Placed'}
+                    </div>
+
+                    <div class="tracking-message">
+                        ${latest?.tracking_message || ''}
+                    </div>
+
+                </div>
+
+                <div class="timeline">
+
+                    ${tracking.map(item => `
+
+                        <div class="timeline-item">
+
+                            <div class="timeline-dot"></div>
+
+                            <div class="timeline-status">
+                                ${item.tracking_status}
+                            </div>
+
+                            <div class="timeline-location">
+                                ${item.location || 'Warehouse'}
+                            </div>
+
+                            <div class="timeline-date">
+                                ${new Date(item.created_at).toLocaleString()}
+                            </div>
+
+                        </div>
+
+                    `).join('')}
+
+                </div>
+
+            </div>
+        `;
+
+        document.getElementById(
+            "trackingModalBody"
+        ).innerHTML = trackingHTML;
+
+        document.getElementById(
+            "trackingModal"
+        ).style.display = "flex";
+
+    } catch (error) {
+
+        console.error("Tracking Error:", error);
+
+        alert("Failed to load tracking");
+    }
 }
 
 function viewOrderDetails(orderId) {
@@ -516,6 +635,14 @@ function toggleCart() {
     // For now, redirect to shop page to access cart
     window.location.href = 'shop.html';
 }
+function closeTrackingModal() {
+
+    document.getElementById(
+        "trackingModal"
+    ).style.display = "none";
+}
+
+window.closeTrackingModal = closeTrackingModal;
 
 // Export functions for global access
 window.trackPackage = trackPackage;

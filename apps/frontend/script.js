@@ -295,305 +295,184 @@ function switchToRegister() {
 }
 
 // Handle login
-function handleLogin(event) {
+async function handleLogin(event) {
+
     event.preventDefault();
-    
-    const formData = new FormData(event.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
-    
-    // Basic validation
-    if (!email || !password) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Signing In...';
-    submitBtn.disabled = true;
-    
-    // Call Medusa login API
-    fetch(`${MEDUSA_API_URL}/auth/customer/emailpass`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-publishable-api-key': PUBLISHABLE_API_KEY
-        },
-        body: JSON.stringify({
-            email: email,
-            password: password
-        })
-    })
-    .then(response => {
-        console.log('Login response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                // Handle different error types
-                if (response.status === 401) {
-                    throw new Error('Invalid email or password. Please try again.');
-                } else if (response.status === 400) {
-                    throw new Error(data.message || 'Invalid login data. Please check your credentials.');
-                } else {
-                    throw new Error(`Login failed: ${response.status} ${response.statusText}`);
-                }
+
+    const formData =
+        new FormData(event.target);
+
+    const email =
+        formData.get("email");
+
+    const password =
+        formData.get("password");
+
+    try {
+
+        const response = await fetch(
+            "http://localhost:7000/api/users/login",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+                    email,
+                    password
+                })
             }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Login response:', data);
-        
-        // Extract token from login response
-        const token = data.token;
-        
-        if (!token) {
-            throw new Error('No authentication token received from server');
+        );
+
+        const data =
+            await response.json();
+
+        console.log(data);
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
         }
-        
-        // Store token temporarily
-        localStorage.setItem('ayurLeafAuthToken', token);
-        
-        console.log("Stored token:", token);
-        
-        // STEP 2: Exchange token for authenticated session
-        return fetch(`${MEDUSA_API_URL}/auth/session`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include'
-        });
-    })
-    .then(response => {
-        console.log('Auth session response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to establish authenticated session: ${response.status} ${response.statusText}`);
-            }
-            console.log('Auth session response:', data);
-            return data;
-        });
-    })
-    .then(sessionData => {
-        // STEP 3: Fetch customer data using authenticated session
-        console.log('Document cookies before customer fetch:', document.cookie);
-        
-        return fetch(`${MEDUSA_API_URL}/store/customers/me`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            }
-        });
-    })
-    .then(response => {
-        console.log('Customer fetch response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch customer data: ${response.status} ${response.statusText}`);
-            }
-            return data;
-        });
-    })
-    .then(customerData => {
-        console.log('Customer data response:', customerData);
-        
-        // Extract customer from the response
-        const customer = customerData.customer;
-        
-        if (!customer || !customer.id) {
-            throw new Error('Invalid customer data received');
-        }
-        
-        // Create user object for frontend
-        const user = {
-            id: customer.id,
-            email: customer.email,
-            name: customer.first_name || customer.metadata?.full_name || customer.email.split('@')[0],
-            firstName: customer.first_name,
-            lastName: customer.last_name,
-            phone: customer.phone,
-            metadata: customer.metadata,
-            createdAt: customer.created_at
-        };
-        
-        // Get stored token for reference
-        const token = localStorage.getItem('ayurLeafAuthToken');
-        
-        // Save complete auth state
-        saveAuthState(user, token);
-        
-        // Load user-specific cart
-        loadCartFromStorage();
-        updateCartUI();
-        
-        updateProfileDropdown();
+
+        const user = data.user;
+
+        localStorage.setItem(
+            "ayurLeafUser",
+            JSON.stringify(user)
+        );
+        localStorage.setItem(
+    "ayurLeafAuthToken",
+    "custom-auth-token"
+);
+
+        currentUser = user;
+
+        isLoggedIn = true;
+
+        showNotification(
+            `Welcome ${user.first_name}`,
+            "success"
+        );
+
         closeLoginModal();
-        
-        // Show success message
-        showNotification(`Welcome back, ${user.name}!`, 'success');
-    })
-    .catch(error => {
-        console.error('Login error:', error);
-        showNotification(error.message || 'Login failed. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    });
-}
 
-// Handle register
-function handleRegister(event) {
-    event.preventDefault();
-    
-    const formData = new FormData(event.target);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const password = formData.get('password');
-    
-    // Basic validation
-    if (!name || !email || !password) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showNotification('Password must be at least 6 characters long', 'error');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Creating Account...';
-    submitBtn.disabled = true;
-    
-    // Call Medusa registration API
-    fetch(`${MEDUSA_API_URL}/auth/customer/emailpass/register`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-publishable-api-key': PUBLISHABLE_API_KEY
-        },
-        body: JSON.stringify({
-            email: email,
-            password: password,
-            // Store full name in metadata
-            metadata: {
-                full_name: name
-            }
-        })
-    })
-    .then(response => {
-        console.log('Registration response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                // Handle different error types
-                if (response.status === 400 && data.type === 'duplicate_error') {
-                    throw new Error('An account with this email already exists. Please sign in instead.');
-                } else if (response.status === 400) {
-                    throw new Error(data.message || 'Invalid registration data. Please check your information.');
-                } else {
-                    throw new Error(`Registration failed: ${response.status} ${response.statusText}`);
-                }
-            }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Registration response:', data);
-        
-        // Extract token from registration response
-        const token = data.token;
-        
-        if (!token) {
-            throw new Error('No authentication token received from registration');
-        }
-        
-        console.log('Registration token:', token);
-        
-        // STEP 2: Exchange token for authenticated session
-        return fetch(`${MEDUSA_API_URL}/auth/session`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include'
-        });
-    })
-    .then(response => {
-        console.log('Auth session response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to establish authenticated session: ${response.status} ${response.statusText}`);
-            }
-            console.log('Auth session response:', data);
-            return data;
-        });
-    })
-    .then(sessionData => {
-        // STEP 3: Create actual customer entity
-        console.log('Creating customer entity...');
-        
-        // Split full name into first_name and last_name
-        const nameParts = name.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-        
-        return fetch(`${MEDUSA_API_URL}/store/customers`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                email: email,
-                first_name: firstName,
-                last_name: lastName
-            })
-        });
-    })
-    .then(response => {
-        console.log('Customer creation response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to create customer entity: ${response.status} ${response.statusText}`);
-            }
-            console.log('Customer creation response:', data);
-            return data;
-        });
-    })
-    .then(customerData => {
-        console.log('Registration flow completed successfully');
-        
-        // Registration successful - don't auto-login
-        closeRegisterModal();
-        showNotification('Account created successfully! Please sign in to continue.', 'success');
-        
         setTimeout(() => {
-            openLoginModal();
-        }, 1500);
-    })
-    .catch(error => {
-        console.error('Registration error:', error);
-        showNotification(error.message || 'Registration failed. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    });
+
+            if (
+                user.role === "admin"
+            ) {
+
+                window.location.href =
+                "./admin.html";
+
+            } else if (
+                user.role === "courier"
+            ) {
+
+                window.location.href =
+                "./courier.html";
+
+            } else {
+
+                window.location.href =
+                "./index.html";
+            }
+
+        }, 1000);
+
+    } catch (error) {
+
+        console.error(error);
+
+        showNotification(
+            error.message,
+            "error"
+        );
+    }
 }
 
+async function handleRegister(event) {
+
+    event.preventDefault();
+
+    const formData =
+        new FormData(event.target);
+
+    const firstName =
+        formData.get("firstName");
+
+    const lastName =
+        formData.get("lastName");
+
+    const email =
+        formData.get("email");
+
+    const password =
+        formData.get("password");
+
+    try {
+
+        const response = await fetch(
+            "http://localhost:7000/api/users/register",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    first_name: firstName,
+
+                    last_name: lastName,
+
+                    email: email,
+
+                    password: password,
+
+                    role: "user"
+                })
+            }
+        );
+
+        const data =
+            await response.json();
+
+        console.log(data);
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
+        }
+
+        showNotification(
+            "Registration Successful",
+            "success"
+        );
+
+        closeRegisterModal();
+
+        openLoginModal();
+
+    } catch (error) {
+
+        console.error(error);
+
+        showNotification(
+            error.message,
+            "error"
+        );
+    }
+}
 // Handle logout
 function handleLogout() {
     console.log('Logging out user:', currentUser);

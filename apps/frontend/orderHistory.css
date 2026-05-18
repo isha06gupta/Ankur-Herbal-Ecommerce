@@ -726,3 +726,174 @@ h1, h2, h3, h4, h5, h6 {
         transform: translateY(0);
     }
 }
+/* TRACKING MODAL */
+
+.tracking-modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,0.5);
+
+    display: none;
+
+    justify-content: center;
+
+    align-items: center;
+
+    z-index: 5000;
+
+    padding: 20px;
+}
+
+.tracking-modal-content {
+
+    background: white;
+
+    width: 100%;
+
+    max-width: 700px;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+
+    animation: fadeIn 0.3s ease;
+}
+
+.tracking-modal-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 20px;
+
+    border-bottom: 1px solid #eee;
+}
+
+.tracking-modal-header h2 {
+
+    color: #4b5d3a;
+}
+
+.close-tracking-btn {
+
+    border: none;
+
+    background: none;
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+    color: #555;
+}
+
+.tracking-body {
+
+    padding: 25px;
+}
+
+.tracking-top {
+
+    margin-bottom: 30px;
+}
+
+.tracking-status {
+
+    font-size: 24px;
+
+    font-weight: bold;
+
+    color: #4b5d3a;
+
+    margin-bottom: 10px;
+}
+
+.tracking-message {
+
+    color: #666;
+}
+
+.timeline {
+
+    position: relative;
+
+    margin-left: 15px;
+}
+
+.timeline::before {
+
+    content: "";
+
+    position: absolute;
+
+    left: 8px;
+
+    top: 0;
+
+    width: 2px;
+
+    height: 100%;
+
+    background: #ddd;
+}
+
+.timeline-item {
+
+    position: relative;
+
+    padding-left: 40px;
+
+    margin-bottom: 30px;
+}
+
+.timeline-dot {
+
+    position: absolute;
+
+    left: -1px;
+
+    top: 5px;
+
+    width: 18px;
+
+    height: 18px;
+
+    background: #4b5d3a;
+
+    border-radius: 50%;
+
+    border: 3px solid white;
+
+    box-shadow: 0 0 0 2px #4b5d3a;
+}
+
+.timeline-status {
+
+    font-weight: 600;
+
+    color: #4b5d3a;
+
+    margin-bottom: 4px;
+}
+
+.timeline-location {
+
+    color: #666;
+
+    font-size: 14px;
+}
+
+.timeline-date {
+
+    font-size: 13px;
+
+    color: #999;
+
+    margin-top: 5px;
+}

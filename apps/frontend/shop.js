@@ -82,7 +82,7 @@ function fetchProducts() {
         '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">Loading Products...</div>';
 
     fetch(
-        `${MEDUSA_API_URL}/store/products?region_id=reg_01KR31Z2NRH3ZEGW5S12PM80FS`,
+        `${MEDUSA_API_URL}/store/products?region_id=reg_01KRGDTG4A76Z2Z0R2V8RBHRV2`,
         {
             method: 'GET',
             credentials: 'include',
@@ -566,7 +566,7 @@ function addSelectedToCart() {
 
 // Medusa API configuration
 const MEDUSA_API_URL = 'http://localhost:9000';
-const PUBLISHABLE_API_KEY = 'pk_b2efd7f24ed19b2bad9b653386611f37d7bbe788288ab8cd4f27cc199cf64acb';
+const PUBLISHABLE_API_KEY = 'pk_14ad2a13987db9ab348a44f58d1c42a18414d926fc29a04eac76a438a4c57c6a';
 
 // Load auth state from localStorage
 function loadAuthState() {
@@ -593,6 +593,7 @@ function saveAuthState(user, token) {
         currentUser = user;
         isLoggedIn = true;
         localStorage.setItem('ayurLeafUser', JSON.stringify(user));
+        localStorage.setItem("ayurLeafAuthToken","custom-auth-token");
         localStorage.setItem('ayurLeafAuthToken', token);
         console.log('Saved auth state:', { user: currentUser, hasToken: !!token });
     } else {
@@ -733,305 +734,246 @@ function switchToRegister() {
 }
 
 // Handle login
-function handleLogin(event) {
+async function handleLogin(event) {
+
     event.preventDefault();
-    
-    const formData = new FormData(event.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
-    
-    // Basic validation
+
+    const formData =
+    new FormData(event.target);
+
+    const email =
+    formData.get("email");
+
+    const password =
+    formData.get("password");
+
     if (!email || !password) {
-        showNotification('Please fill in all fields', 'error');
+
+        showNotification(
+            "Please fill all fields",
+            "error"
+        );
+
         return;
     }
-    
-    // Show loading state
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Signing In...';
+
+    const submitBtn =
+    event.target.querySelector(
+        'button[type="submit"]'
+    );
+
+    const originalText =
+    submitBtn.textContent;
+
+    submitBtn.textContent =
+    "Signing In...";
+
     submitBtn.disabled = true;
-    
-    // Call Medusa login API
-    fetch(`${MEDUSA_API_URL}/auth/customer/emailpass`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-publishable-api-key': PUBLISHABLE_API_KEY
-        },
-        body: JSON.stringify({
-            email: email,
-            password: password
-        })
-    })
-    .then(response => {
-        console.log('Login response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                // Handle different error types
-                if (response.status === 401) {
-                    throw new Error('Invalid email or password. Please try again.');
-                } else if (response.status === 400) {
-                    throw new Error(data.message || 'Invalid login data. Please check your credentials.');
-                } else {
-                    throw new Error(`Login failed: ${response.status} ${response.statusText}`);
-                }
+
+    try {
+
+        const response =
+        await fetch(
+            "http://localhost:7000/api/users/login",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+                    email,
+                    password
+                })
             }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Login response:', data);
-        
-        // Extract token from login response
-        const token = data.token;
-        
-        if (!token) {
-            throw new Error('No authentication token received from server');
+        );
+
+        const data =
+        await response.json();
+
+        console.log(data);
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Login failed"
+            );
         }
-        
-        // Store token temporarily
-        localStorage.setItem('ayurLeafAuthToken', token);
-        
-        console.log("Stored token:", token);
-        
-        // STEP 2: Exchange token for authenticated session
-        return fetch(`${MEDUSA_API_URL}/auth/session`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include'
-        });
-    })
-    .then(response => {
-        console.log('Auth session response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to establish authenticated session: ${response.status} ${response.statusText}`);
-            }
-            console.log('Auth session response:', data);
-            return data;
-        });
-    })
-    .then(sessionData => {
-        // STEP 3: Fetch customer data using authenticated session
-        console.log('Document cookies before customer fetch:', document.cookie);
-        
-        return fetch(`${MEDUSA_API_URL}/store/customers/me`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            }
-        });
-    })
-    .then(response => {
-        console.log('Customer fetch response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch customer data: ${response.status} ${response.statusText}`);
-            }
-            return data;
-        });
-    })
-    .then(customerData => {
-        console.log('Customer data response:', customerData);
-        
-        // Extract customer from the response
-        const customer = customerData.customer;
-        
-        if (!customer || !customer.id) {
-            throw new Error('Invalid customer data received');
-        }
-        
-        // Create user object for frontend
-        const user = {
-            id: customer.id,
-            email: customer.email,
-            name: customer.first_name || customer.metadata?.full_name || customer.email.split('@')[0],
-            firstName: customer.first_name,
-            lastName: customer.last_name,
-            phone: customer.phone,
-            metadata: customer.metadata,
-            createdAt: customer.created_at
-        };
-        
-        // Get stored token for reference
-        const token = localStorage.getItem('ayurLeafAuthToken');
-        
-        // Save complete auth state
-        saveAuthState(user, token);
-        
-        // Load user-specific cart
-        loadCartFromStorage();
-        updateCartUI();
-        
+
+        const user = data.user;
+
+        localStorage.setItem(
+            "ayurLeafUser",
+            JSON.stringify(user)
+        );
+
+        localStorage.setItem(
+            "ayurLeafAuthToken",
+            "custom-auth-token"
+        );
+
+        currentUser = user;
+
+        isLoggedIn = true;
+
         updateProfileDropdown();
+
+        loadCartFromStorage();
+
+        updateCartUI();
+
         closeLoginModal();
-        
-        // Show success message
-        showNotification(`Welcome back, ${user.name}!`, 'success');
-    })
-    .catch(error => {
-        console.error('Login error:', error);
-        showNotification(error.message || 'Login failed. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    });
-}
 
-// Handle register
-function handleRegister(event) {
-    event.preventDefault();
-    
-    const formData = new FormData(event.target);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const password = formData.get('password');
-    
-    // Basic validation
-    if (!name || !email || !password) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showNotification('Password must be at least 6 characters long', 'error');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Creating Account...';
-    submitBtn.disabled = true;
-    
-    // Call Medusa registration API
-    fetch(`${MEDUSA_API_URL}/auth/customer/emailpass/register`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-publishable-api-key': PUBLISHABLE_API_KEY
-        },
-        body: JSON.stringify({
-            email: email,
-            password: password,
-            // Store full name in metadata
-            metadata: {
-                full_name: name
-            }
-        })
-    })
-    .then(response => {
-        console.log('Registration response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                // Handle different error types
-                if (response.status === 400 && data.type === 'duplicate_error') {
-                    throw new Error('An account with this email already exists. Please sign in instead.');
-                } else if (response.status === 400) {
-                    throw new Error(data.message || 'Invalid registration data. Please check your information.');
-                } else {
-                    throw new Error(`Registration failed: ${response.status} ${response.statusText}`);
-                }
-            }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Registration response:', data);
-        
-        // Extract token from registration response
-        const token = data.token;
-        
-        if (!token) {
-            throw new Error('No authentication token received from registration');
-        }
-        
-        console.log('Registration token:', token);
-        
-        // STEP 2: Exchange token for authenticated session
-        return fetch(`${MEDUSA_API_URL}/auth/session`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include'
-        });
-    })
-    .then(response => {
-        console.log('Auth session response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to establish authenticated session: ${response.status} ${response.statusText}`);
-            }
-            console.log('Auth session response:', data);
-            return data;
-        });
-    })
-    .then(sessionData => {
-        // STEP 3: Create actual customer entity
-        console.log('Creating customer entity...');
-        
-        // Split full name into first_name and last_name
-        const nameParts = name.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-        
-        return fetch(`${MEDUSA_API_URL}/store/customers`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-publishable-api-key': PUBLISHABLE_API_KEY
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                email: email,
-                first_name: firstName,
-                last_name: lastName
-            })
-        });
-    })
-    .then(response => {
-        console.log('Customer creation response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to create customer entity: ${response.status} ${response.statusText}`);
-            }
-            console.log('Customer creation response:', data);
-            return data;
-        });
-    })
-    .then(customerData => {
-        console.log('Registration flow completed successfully');
-        
-        // Registration successful - don't auto-login
-        closeRegisterModal();
-        showNotification('Account created successfully! Please sign in to continue.', 'success');
-        
+        showNotification(
+            `Welcome ${user.first_name}`,
+            "success"
+        );
+
         setTimeout(() => {
-            openLoginModal();
-        }, 1500);
-    })
-    .catch(error => {
-        console.error('Registration error:', error);
-        showNotification(error.message || 'Registration failed. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    });
-}
 
+            if (
+                user.role === "admin"
+            ) {
+
+                window.location.href =
+                "./admin.html";
+
+            } else if (
+                user.role === "courier"
+            ) {
+
+                window.location.href =
+                "./courier.html";
+
+            } else {
+
+                window.location.href =
+                "./shop.html";
+            }
+
+        }, 1000);
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            error.message,
+            "error"
+        );
+
+    } finally {
+
+        submitBtn.textContent =
+        originalText;
+
+        submitBtn.disabled = false;
+    }
+}
+// Handle register
+async function handleRegister(event) {
+
+    event.preventDefault();
+
+    const formData =
+    new FormData(event.target);
+
+    const firstName =
+    formData.get("firstName");
+
+    const lastName =
+    formData.get("lastName");
+
+    const email =
+    formData.get("email");
+
+    const password =
+    formData.get("password");
+
+    if (
+        !firstName ||
+        !lastName ||
+        !email ||
+        !password
+    ) {
+
+        showNotification(
+            "Please fill all fields",
+            "error"
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+        await fetch(
+            "http://localhost:7000/api/users/register",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    first_name:
+                    firstName,
+
+                    last_name:
+                    lastName,
+
+                    email,
+
+                    password,
+
+                    role: "user"
+                })
+            }
+        );
+
+        const data =
+        await response.json();
+
+        console.log(data);
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Registration failed"
+            );
+        }
+
+        closeRegisterModal();
+
+        showNotification(
+            "Account created successfully",
+            "success"
+        );
+
+        setTimeout(() => {
+
+            openLoginModal();
+
+        }, 1000);
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            error.message,
+            "error"
+        );
+    }
+}
 // Handle logout
 function handleLogout() {
     console.log('Logging out user:', currentUser);
@@ -1287,54 +1229,42 @@ function updateFormTitle() {
 }
 
 // Load addresses from Medusa API
-function loadAddresses() {
-    console.log('Loading addresses for customer:', currentUser?.id);
-    
-    if (!isLoggedIn || !currentUser) {
-        console.log('User not logged in, cannot load addresses');
-        return;
-    }
-    
-    const token = localStorage.getItem('ayurLeafAuthToken');
-    console.log('Current auth token:', token ? 'Token exists' : 'No token');
-    console.log('Fetching customer addresses with auth');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-publishable-api-key': PUBLISHABLE_API_KEY
-    };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    fetch(`${MEDUSA_API_URL}/store/customers/me/addresses`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: headers
-    })
-    .then(response => {
-        console.log('Addresses API response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to load addresses: ${response.status} ${response.statusText}`);
-            }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Fetched addresses:', data);
-        addresses = data.addresses || [];
-        renderAddressList();
-    })
-    .catch(error => {
-        console.error('Error loading addresses:', error);
-        addresses = [];
-        renderAddressList();
-        showNotification('Failed to load addresses. Please try again.', 'error');
-    });
-}
+async function loadAddresses() {
 
+    try {
+
+        const response = await fetch(
+            `http://localhost:7000/api/address/${currentUser.id}`
+        );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
+        }
+
+        addresses =
+            data.addresses || [];
+
+        renderAddressList();
+
+    } catch (error) {
+
+        console.error(
+            "Error loading addresses:",
+            error
+        );
+
+        showNotification(
+            "Failed to load addresses",
+            "error"
+        );
+    }
+}
 // Render address list
 function renderAddressList() {
     const addressList = document.getElementById('addressList');
@@ -1394,21 +1324,56 @@ function createAddressCard(address) {
 
 // Select address
 function selectAddress(addressId) {
-    console.log('Selecting address:', addressId);
-    selectedAddress = addresses.find(addr => addr.id === addressId);
-    
-    if (selectedAddress) {
-        console.log('Selected address:', selectedAddress);
-        
-        // Store selected address globally for persistence
-        currentCheckoutAddress = selectedAddress;
-        console.log('Stored currentCheckoutAddress:', currentCheckoutAddress);
-        
-        renderAddressList(); // Update UI to show selected state
-        showSelectedAddressSection();
-    }
-}
 
+    console.log(
+        "Selecting address:",
+        addressId
+    );
+
+    selectedAddress =
+    addresses.find(addr => {
+
+        return (
+            String(addr.id) ===
+            String(addressId)
+        );
+    });
+
+    console.log(
+        "Selected Address:",
+        selectedAddress
+    );
+
+    if (!selectedAddress) {
+
+        showNotification(
+            "Address not found",
+            "error"
+        );
+
+        return;
+    }
+
+    currentCheckoutAddress =
+        selectedAddress;
+
+    renderAddressList();
+
+    // SHOW CONFIRM SECTION
+    document.getElementById(
+        "addressListSection"
+    ).style.display = "none";
+
+    document.getElementById(
+        "addressFormSection"
+    ).style.display = "none";
+
+    document.getElementById(
+        "selectedAddressSection"
+    ).style.display = "block";
+
+    displaySelectedAddress();
+}
 // Edit address
 function editAddress(addressId) {
     console.log('Editing address:', addressId);
@@ -1432,56 +1397,50 @@ function editAddress(addressId) {
 }
 
 // Delete address
-function deleteAddress(addressId) {
-    console.log('Deleting address:', addressId);
-    
-    if (!confirm('Are you sure you want to delete this address?')) {
-        return;
-    }
-    
-    const token = localStorage.getItem('ayurLeafAuthToken');
-    console.log('Deleting address with auth token:', token ? 'Token exists' : 'No token');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-publishable-api-key': PUBLISHABLE_API_KEY
-    };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    fetch(`${MEDUSA_API_URL}/store/customers/me/addresses/${addressId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: headers
-    })
-    .then(response => {
-        console.log('Delete address response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`Failed to delete address: ${response.status} ${response.statusText}`);
-        }
-        console.log('Address deleted successfully');
-    })
-    .then(() => {
-        // Remove from local array
-        addresses = addresses.filter(addr => addr.id !== addressId);
-        
-        // Clear selected address if it was deleted
-        if (selectedAddress && selectedAddress.id === addressId) {
-            selectedAddress = null;
-        }
-        
-        // Refresh UI
-        renderAddressList();
-        showNotification('Address deleted successfully', 'success');
-    })
-    .catch(error => {
-        console.error('Error deleting address:', error);
-        showNotification('Failed to delete address. Please try again.', 'error');
-    });
-}
+async function deleteAddress(addressId) {
 
+    try {
+
+        const response =
+        await fetch(
+            `http://localhost:7000/api/address/${addressId}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        const data =
+        await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
+        }
+
+        addresses =
+        addresses.filter(
+            addr => addr.id !== addressId
+        );
+
+        renderAddressList();
+
+        showNotification(
+            "Address deleted",
+            "success"
+        );
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            "Delete failed",
+            "error"
+        );
+    }
+}
 // Handle address form submission
 function handleAddressSubmit(event) {
     event.preventDefault();
@@ -1609,151 +1568,127 @@ function clearFormErrors() {
 }
 
 // Create new address
-function createAddress(addressData) {
-    console.log('Creating new address:', addressData);
-    
-    const token = localStorage.getItem('ayurLeafAuthToken');
-    console.log('Creating address with auth token:', token ? 'Token exists' : 'No token');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-publishable-api-key': PUBLISHABLE_API_KEY
-    };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    fetch(`${MEDUSA_API_URL}/store/customers/me/addresses`, {
-        method: 'POST',
-        headers: headers,
-        credentials: 'include',
-        body: JSON.stringify(addressData)
-    })
-    .then(response => {
-        console.log('Create address response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to create address: ${response.status} ${response.statusText}`);
-            }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Create address API response:', data);
-        
-        // Extract address from response - handle different response structures
-        let newAddress = null;
-        if (data.address) {
-            newAddress = data.address;
-        } else if (data.customer && data.customer.addresses && data.customer.addresses.length > 0) {
-            // If response contains customer with addresses array, get the last one
-            newAddress = data.customer.addresses[data.customer.addresses.length - 1];
-        } else if (data.id) {
-            // If response is the address object directly
-            newAddress = data;
-        }
-        
-        console.log('Extracted new address:', newAddress);
-        
-        if (!newAddress || !newAddress.id) {
-            console.error('Failed to extract address from response:', data);
-            showNotification('Failed to save address. Please try again.', 'error');
-            return;
-        }
-        
-        // Add to local array
-        addresses.push(newAddress);
-        console.log('Updated addresses array:', addresses);
-        
-        // Show success and go back to list
-        showNotification('Address added successfully', 'success');
-        showAddressList();
-        renderAddressList();
-    })
-    .catch(error => {
-        console.error('Error creating address:', error);
-        showNotification('Failed to add address. Please try again.', 'error');
-    });
-}
+async function createAddress(addressData) {
 
+    try {
+
+        const response = await fetch(
+            "http://localhost:7000/api/address/create",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    customer_id:
+                    currentUser.id,
+
+                    ...addressData
+                })
+            }
+        );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
+        }
+
+        showNotification(
+            "Address saved successfully",
+            "success"
+        );
+
+        loadAddresses();
+
+        showAddressList();
+
+    } catch (error) {
+
+        console.error(
+            "Error creating address:",
+            error
+        );
+
+        showNotification(
+            "Failed to save address",
+            "error"
+        );
+    }
+}
 // Update existing address
-function updateAddress(addressId, addressData) {
-    console.log('Updating address:', addressId, addressData);
-    
-    const token = localStorage.getItem('ayurLeafAuthToken');
-    console.log('Updating address with auth token:', token ? 'Token exists' : 'No token');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-publishable-api-key': PUBLISHABLE_API_KEY
-    };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    fetch(`${MEDUSA_API_URL}/store/customers/me/addresses/${addressId}`, {
-        method: 'POST',
-        headers: headers,
-        credentials: 'include',
-        body: JSON.stringify(addressData)
-    })
-    .then(response => {
-        console.log('Update address response status:', response.status);
-        return response.json().then(data => {
-            if (!response.ok) {
-                throw new Error(`Failed to update address: ${response.status} ${response.statusText}`);
-            }
-            return data;
-        });
-    })
-    .then(data => {
-        console.log('Update address API response:', data);
-        
-        // Extract address from response - handle different response structures
-        let updatedAddress = null;
-        if (data.address) {
-            updatedAddress = data.address;
-        } else if (data.customer && data.customer.addresses && data.customer.addresses.length > 0) {
-            // If response contains customer with addresses array, find the updated one
-            updatedAddress = data.customer.addresses.find(addr => addr.id === addressId);
-        } else if (data.id) {
-            // If response is address object directly
-            updatedAddress = data;
-        }
-        
-        console.log('Extracted updated address:', updatedAddress);
-        
-        if (!updatedAddress || !updatedAddress.id) {
-            console.error('Failed to extract updated address from response:', data);
-            showNotification('Failed to update address. Please try again.', 'error');
-            return;
-        }
-        
-        // Update in local array
-        const index = addresses.findIndex(addr => addr.id === addressId);
-        if (index !== -1) {
-            addresses[index] = updatedAddress;
-            console.log('Updated addresses array:', addresses);
-        }
-        
-        // Clear selected address if it was updated
-        if (selectedAddress && selectedAddress.id === addressId) {
-            selectedAddress = null;
-        }
-        
-        // Show success and go back to list
-        showNotification('Address updated successfully', 'success');
-        showAddressList();
-        renderAddressList();
-    })
-    .catch(error => {
-        console.error('Error updating address:', error);
-        showNotification('Failed to update address. Please try again.', 'error');
-    });
-}
+async function updateAddress(
+    addressId,
+    addressData
+) {
 
+    try {
+
+        const response =
+        await fetch(
+            `http://localhost:7000/api/address/${addressId}`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify(
+                    addressData
+                )
+            }
+        );
+
+        const data =
+        await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message
+            );
+        }
+
+        const index =
+        addresses.findIndex(
+            addr => addr.id === addressId
+        );
+
+        if (index !== -1) {
+
+            addresses[index] =
+            data.address;
+        }
+
+        renderAddressList();
+
+        showNotification(
+            "Address updated",
+            "success"
+        );
+
+        showAddressList();
+
+    } catch(error) {
+
+        console.error(error);
+
+        showNotification(
+            "Update failed",
+            "error"
+        );
+    }
+}
 // Display selected address
 function displaySelectedAddress() {
     const selectedCard = document.getElementById('selectedAddressCard');
@@ -1771,7 +1706,7 @@ function displaySelectedAddress() {
                 ${selectedAddress.address_2 ? `<div class="address-line">${selectedAddress.address_2}</div>` : ''}
                 <div class="address-city-state">${selectedAddress.city}, ${selectedAddress.province}</div>
                 <div class="address-pincode">${selectedAddress.postal_code}</div>
-                ${selectedAddress.metadata?.landmark ? `<div class="address-landmark">Landmark: ${selectedAddress.metadata.landmark}</div>` : ''}
+                ${selectedAddress.landmark ? `<div class="address-landmark">Landmark: ${selectedAddress.landmark}</div>` : ''}
             </div>
         `;
     }
@@ -2049,7 +1984,7 @@ async function createMedusaOrder() {
             headers: headers,
             credentials: 'include',
             body: JSON.stringify({
-                region_id: 'reg_01KR31Z2NRH3ZEGW5S12PM80FS' // Same region as products
+                region_id: 'reg_01KRGDTG4A76Z2Z0R2V8RBHRV2' // Same region as products
             })
         });
         
@@ -2077,10 +2012,7 @@ async function createMedusaOrder() {
         // Check if customer is already associated before attempting attachment
         if (medusaCart.customer && medusaCart.customer.id === currentUser.id) {
             console.log('✅ Customer is already associated with cart, skipping attachment step');
-        } else {
-            console.log('🔗 Customer not associated, attempting attachment...');
-            await attachCustomerToCart(medusaCart.id);
-        }
+        } 
         
         // STEP 4: Attach shipping address
         console.log('📍 STEP 4: Adding shipping address...');
@@ -2141,72 +2073,6 @@ async function addItemsToCart(cartId, items) {
 }
 
 // Attach authenticated customer to cart
-async function attachCustomerToCart(cartId) {
-    console.log(`Attaching authenticated customer to cart ${cartId}`);
-    console.log('Current authenticated user:', currentUser);
-    
-    // For Medusa v2, customer is automatically inferred from authenticated session
-    // We don't need to send customer_id in the request body
-    const token = localStorage.getItem('ayurLeafAuthToken');
-    console.log('Using auth token for customer attachment:', token ? 'Token exists' : 'No token');
-    
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-publishable-api-key': PUBLISHABLE_API_KEY
-    };
-    
-    // Add authorization header if token exists
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    const customerResponse = await fetch(`${MEDUSA_API_URL}/store/carts/${cartId}/customer`, {
-        method: 'POST',
-        headers: headers,
-        credentials: 'include',
-        body: JSON.stringify({}) // Empty body - customer inferred from session
-    });
-    
-    console.log('Customer attachment response status:', customerResponse.status);
-    console.log('Customer attachment response headers:', Object.fromEntries(customerResponse.headers.entries()));
-    
-    if (!customerResponse.ok) {
-        const errorData = await customerResponse.json().catch(() => ({}));
-        console.error('Customer attachment error response:', errorData);
-        
-        // If customer attachment fails with 400, it might mean customer is already associated
-        // or the endpoint isn't needed in v2. Let's check the cart state instead.
-        if (customerResponse.status === 400 && errorData.message?.includes('customer_id')) {
-            console.log('⚠️ Customer attachment failed due to v2 API changes. Checking cart state...');
-            
-            // Try to fetch cart to see if customer is already associated
-            const cartResponse = await fetch(`${MEDUSA_API_URL}/store/carts/${cartId}`, {
-                method: 'GET',
-                headers: {
-                    'x-publishable-api-key': PUBLISHABLE_API_KEY
-                },
-                credentials: 'include'
-            });
-            
-            if (cartResponse.ok) {
-                const cartData = await cartResponse.json();
-                console.log('Cart state after failed customer attachment:', cartData);
-                
-                // Check if cart already has customer info
-                if (cartData.cart?.customer) {
-                    console.log('✅ Customer is already associated with cart:', cartData.cart.customer);
-                    return cartData.cart.customer;
-                }
-            }
-        }
-        
-        throw new Error(`Failed to attach customer to cart: ${customerResponse.status} ${customerResponse.statusText}. ${errorData.message || ''}`);
-    }
-    
-    const customerData = await customerResponse.json();
-    console.log('✅ Customer attached to cart successfully:', customerData);
-    return customerData.customer || customerData;
-}
 
 // Add shipping address to cart
 async function addShippingAddressToCart(cartId, address) {
@@ -2440,75 +2306,98 @@ async function completeCheckout(cartId) {
             handler: async function (response) {
 
                 console.log("✅ Razorpay payment success:", response);
+                // SAVE ORDER TO POSTGRESQL DATABASE
+
+const backendOrderPayload = {
+
+    customer: {
+    name:
+    currentUser.firstName ||
+    currentUser.first_name ||
+    currentUser.name ||
+    "Customer",
+
+    email:
+        currentUser.email || "",
+
+    phone:
+        checkoutState.address?.phone || "",
+
+    address: `
+${checkoutState.address?.address_1 || ""}
+${checkoutState.address?.city || ""}
+${checkoutState.address?.province || ""}
+${checkoutState.address?.postal_code || ""}
+`.trim()
+},
+
+    items: checkoutState.items,
+
+    subtotal: checkoutState.subtotal,
+
+    total_amount: checkoutState.grandTotal,
+
+    payment_status: "paid",
+
+    order_status: "pending",
+
+    razorpay_payment_id: response.razorpay_payment_id
+};
+
+console.log("Sending order to backend:", backendOrderPayload);
+
+const backendResponse = await fetch(
+    "http://localhost:7000/api/orders",
+    {
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify(backendOrderPayload)
+    }
+);
+
+const backendData = await backendResponse.json();
+
+console.log("Backend order response:", backendData);
+
+if (!backendResponse.ok) {
+    throw new Error("Failed to save order in database");
+}
+
+console.log("✅ Order saved in PostgreSQL");
 
                 try {
 
-                    // CREATE CUSTOM ORDER
-                    const orderPayload = {
+    console.log("✅ PostgreSQL order completed");
 
-                        payment_id: response.razorpay_payment_id,
+    // CLEAR CART
+    cart = [];
 
-                        customer: currentUser,
+    updateCartUI();
 
-                        address: checkoutState.address,
+    localStorage.removeItem(
+        `ayurLeafCart_${currentUser.id}`
+    );
 
-                        items: checkoutState.items,
+    // SUCCESS MESSAGE
+    alert(
+        "Order placed successfully!"
+    );
 
-                        subtotal: checkoutState.subtotal,
+    // REDIRECT
+    window.location.href =
+        "./orderHistory.html";
 
-                        shipping: checkoutState.shipping,
+} catch (err) {
 
-                        total: checkoutState.grandTotal,
-
-                        payment_status: "paid",
-
-                        order_status: "placed",
-
-                        created_at: new Date().toISOString()
-                    };
-
-                    console.log("ORDER PAYLOAD:", orderPayload);
-
-                    // SAVE ORDER
-                    const existingOrders =
-                        JSON.parse(localStorage.getItem("orders")) || [];
-
-                    const newOrder = {
-                        id: "ORD-" + Date.now(),
-                        ...orderPayload
-                    };
-
-                    existingOrders.push(newOrder);
-
-                    localStorage.setItem(
-                        "orders",
-                        JSON.stringify(existingOrders)
-                    );
-
-                    console.log("✅ Order saved:", newOrder);
-
-                    // CLEAR CART
-                    cart = [];
-                    updateCartUI();
-                    localStorage.removeItem(`ayurLeafCart_${currentUser.id}`);
-                    cart = [];
-                    updateCartUI();
-
-                    // SUCCESS MESSAGE
-                    alert(
-                        "Order placed successfully!\nOrder ID: " +
-                        newOrder.id
-                    );
-
-                    // RELOAD PAGE
-                    window.location.href = "./orderHistory.html";
-
-                } catch (err) {
-
-                    console.error("Order save failed:", err);
-
-                    alert("Payment succeeded but order save failed");
-                }
+    console.error(
+        "Checkout cleanup failed:",
+        err
+    );
+}
             },
 
             prefill: {
@@ -2796,12 +2685,6 @@ function continueShopping() {
     window.location.href = 'shop.html';
 }
 
-// View order history
-function viewOrderHistory() {
-    console.log('Viewing order history');
-    closeOrderSuccessModal();
-    showNotification('Order history page coming soon!', 'success');
-}
 
 // Export checkout summary functions for onclick handlers
 globalThis.openCheckoutSummaryModal = openCheckoutSummaryModal;
@@ -2813,4 +2696,3 @@ globalThis.proceedToPayment = proceedToPayment;
 // Export order success modal functions for onclick handlers
 globalThis.closeOrderSuccessModal = closeOrderSuccessModal;
 globalThis.continueShopping = continueShopping;
-globalThis.viewOrderHistory = viewOrderHistory;

@@ -794,3 +794,235 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+.status-actions {
+    margin-top: 8px;
+}
+
+.mini-status-btn {
+
+    background: #556B2F;
+    color: white;
+
+    border: none;
+
+    padding: 6px 10px;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+
+    transition: 0.2s;
+}
+
+.mini-status-btn:hover {
+
+    background: #3D4A1F;
+}
+
+.completed-status {
+
+    font-size: 12px;
+
+    color: #52B788;
+
+    font-weight: 600;
+}
+.product-preview {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 10px;
+}
+
+.product-preview-img {
+
+    width: 42px;
+
+    height: 42px;
+
+    object-fit: cover;
+
+    border-radius: 8px;
+
+    border: 1px solid #ddd;
+}
+
+.product-preview-name {
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #2C3E50;
+}
+
+.product-preview-qty {
+
+    font-size: 12px;
+
+    color: #6C757D;
+}
+.recent-activity-section {
+
+    background: white;
+
+    padding: 24px;
+
+    border-radius: 16px;
+
+    margin-top: 30px;
+
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.recent-activity-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+.activity-item {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 14px;
+}
+
+.activity-dot {
+
+    width: 12px;
+
+    height: 12px;
+
+    border-radius: 50%;
+
+    background: #556B2F;
+
+    margin-top: 6px;
+}
+
+.activity-title {
+
+    font-size: 14px;
+
+    color: #2C3E50;
+
+    margin-bottom: 4px;
+}
+
+.activity-time {
+
+    font-size: 12px;
+
+    color: #7F8C8D;
+}
+.filters-container {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    flex-wrap: wrap;
+}
+
+.filter-group {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+.filter-group select,
+.search-input {
+
+    height: 42px;
+
+    padding: 0 14px;
+
+    border: 1px solid #d6d6d6;
+
+    border-radius: 8px;
+
+    min-width: 180px;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+.search-input {
+
+    min-width: 220px;
+}
+.invoice-btn {
+
+    background: #c0392b;
+
+    color: white;
+
+}
+.add-courier-card {
+    margin-top: 20px;
+
+    cursor: pointer;
+
+    transition: 0.3s;
+}
+
+.add-courier-card:hover {
+
+    transform: translateY(-4px);
+
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.add-courier-text {
+
+    font-size: 22px;
+
+    color: #556B2F;
+}
+
+.form-grid {
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 16px;
+}
+
+.form-grid input,
+.form-grid select {
+
+    padding: 12px;
+
+    border-radius: 8px;
+
+    border: 1px solid #ddd;
+
+    outline: none;
+
+    font-size: 14px;
+}
+
+.form-grid input:focus,
+.form-grid select:focus {
+
+    border-color: #556B2F;
+}
